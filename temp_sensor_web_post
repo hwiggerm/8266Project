@@ -65,7 +65,7 @@ void loop() {
     Serial.print(" error ");
   }
   }
-   // http://84.80.49.52:85/logtemp.php?device=1&temp=122&humidity=22
+   // http://84.80.49.52:85/rpiLogger.php?device=1&temp=122&humidity=22
    
    //Post Data
   postData = "device=" + device + "&temp=" + temperature + "&humidity=" + humidity;
