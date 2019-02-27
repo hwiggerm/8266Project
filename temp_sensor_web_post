@@ -41,15 +41,11 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
+  
   Serial.println("");
   Serial.println("WiFi connected..!");
   Serial.print("Got IP: ");  Serial.println(WiFi.localIP());
 
-  server.on("/", handle_OnConnect);
-  server.onNotFound(handle_NotFound);
-
-  server.begin();
-  Serial.println("HTTP server started")
 }
 
 
@@ -57,60 +53,35 @@ void setup() {
 
 void loop() {
   HTTPClient http;    //Declare object of class HTTPClient
-
-  server.handleClient();
-  
-}
-
-
-
-
-void handle_OnConnect() {
-
   
   byte temperature = 0;
   byte humidity = 0;
+  byte device = 1 ; 
   int err ;
   
   while (err != 0 ) {
   err = SimpleDHTErrSuccess;
   if ((err = dht11.read(&temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
-    Serial.print(" error "); ;
+    Serial.print(" error ");
   }
   }
+   // http://84.80.49.52:85/logtemp.php?device=1&temp=122&humidity=22
+   
+   //Post Data
+  postData = "device=" + device + "&temp=" + temperature + "&humidity=" + humidity;
   
-  Serial.print((int)temperature); Serial.print(" *C, "); 
-  Serial.print((int)humidity); Serial.println(" H");
- 
-  server.send(200, "text/html", SendHTML(temperature,humidity)); 
+  http.begin("http://84.80.49.52:85/logtemp.php");                     // request destination
+  http.addHeader("Content-Type", "application/x-www-form-urlencoded");  //Specify content-type header
+
+  int httpCode = http.POST(postData);   //Send the request
+  String payload = http.getString();    //Get the response payload
+
+  Serial.println(httpCode);   //Print HTTP return code
+  Serial.println(payload);    //Print request response payload
+
+  http.end();  //Close connection
+  
+  delay(5000);  //Post Data at every 5 seconds  
 }
 
-void handle_NotFound(){
-  server.send(404, "text/plain", "Not found");
-}
 
-String SendHTML(int Temperaturestat,int Humiditystat){
-  String ptr = "<!DOCTYPE html> <html>\n";
-  ptr +="<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
-  ptr +="<title>ESP8266 Weather Report</title>\n";
-  ptr +="<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
-  ptr +="body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;}\n";
-  ptr +="p {font-size: 24px;color: #444444;margin-bottom: 10px;}\n";
-  ptr +="</style>\n";
-  ptr +="</head>\n";
-  ptr +="<body>\n";
-  ptr +="<div id=\"webpage\">\n";
-  ptr +="<h1>ESP8266 NodeMCU Weather Report</h1>\n";
-  
-  ptr +="<p>Temperature: ";
-  ptr +=(int)Temperaturestat;
-  ptr +=" C</p>";
-  ptr +="<p>Humidity: ";
-  ptr +=(int)Humiditystat;
-  ptr +="%</p>";
-  
-  ptr +="</div>\n";
-  ptr +="</body>\n";
-  ptr +="</html>\n";
-  return ptr;
-}
