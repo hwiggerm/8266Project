@@ -56,8 +56,9 @@ void loop() {
   
   byte temperature = 0;
   byte humidity = 0;
-  byte device = 1 ; 
+  String  device = "1" ; 
   int err ;
+  String postData, sTemp , sHumid;
   
   while (err != 0 ) {
   err = SimpleDHTErrSuccess;
@@ -65,10 +66,14 @@ void loop() {
     Serial.print(" error ");
   }
   }
+
+  sTemp = String(temperature);
+  sHumid = String(humidity);
+   
    // http://84.80.49.52:85/rpiLogger.php?device=1&temp=122&humidity=22
    
    //Post Data
-  postData = "device=" + device + "&temp=" + temperature + "&humidity=" + humidity;
+  postData = "device=" + device + "&temp=" + sTemp + "&humidity=" + sHumid;
   
   http.begin("http://84.80.49.52:85/logtemp.php");                     // request destination
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");  //Specify content-type header
@@ -83,5 +88,3 @@ void loop() {
   
   delay(5000);  //Post Data at every 5 seconds  
 }
-
-
