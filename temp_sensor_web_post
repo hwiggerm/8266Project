@@ -87,6 +87,6 @@ void loop() {
   Serial.println(payload);    //Print request response payload
 
   http.end();  //Close connection
-  
-  delay(150000);  //Post Data at every 500 seconds  
+ 
+  delay(300000);  //Post Data at every 5min
 }
