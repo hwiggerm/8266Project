@@ -2,7 +2,6 @@
 #include <WiFiClient.h> 
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPClient.h>
-
 #include "SimpleDHT.h"
 
 // DHT Sensor
@@ -49,42 +48,45 @@ void setup() {
 }
 
 
-
-
 void loop() {
   HTTPClient http;    //Declare object of class HTTPClient
+  String postData, sTemp , sHumid, sDevice ;
+
   
   byte temperature = 0;
   byte humidity = 0;
-  String  device = "1" ; 
-  int err ;
-  String postData, sTemp , sHumid;
-  
+  int err = 1 ;
+
   while (err != 0 ) {
-  err = SimpleDHTErrSuccess;
-  if ((err = dht11.read(&temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
-    Serial.print(" error ");
-  }
+    err = SimpleDHTErrSuccess;
+    if ((err = dht11.read(&temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
+       Serial.print(" error "); ;
+    }
   }
 
+  
+  Serial.print(int(temperature)) ; Serial.println(" *C, ");
+  sDevice = "1" ;
   sTemp = String(temperature);
   sHumid = String(humidity);
    
-   // http://84.80.49.52:85/rpiLogger.php?device=1&temp=122&humidity=22
+  // http://84.80.49.52:85/rpiLogger.php?device=1&temp=122&humidity=22
    
-   //Post Data
-  postData = "device=" + device + "&temp=" + sTemp + "&humidity=" + sHumid;
+  //Post Data
+  postData = "device=" + sDevice + "&temp=" + sTemp + "&humidity=" + sHumid;
   
-  http.begin("http://84.80.49.52:85/logtemp.php");                     // request destination
+  http.begin("http://84.80.49.52:85/rpiLogger.php");                     // request destination
   http.addHeader("Content-Type", "application/x-www-form-urlencoded");  //Specify content-type header
 
   int httpCode = http.POST(postData);   //Send the request
   String payload = http.getString();    //Get the response payload
 
+  Serial.print("Code:");
   Serial.println(httpCode);   //Print HTTP return code
+  Serial.print("Payload:");
   Serial.println(payload);    //Print request response payload
 
   http.end();  //Close connection
   
-  delay(5000);  //Post Data at every 5 seconds  
+  delay(150000);  //Post Data at every 500 seconds  
 }
