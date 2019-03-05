@@ -1,0 +1,106 @@
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h> 
+#include <ESP8266WebServer.h>
+#include <ESP8266HTTPClient.h>
+#include "SimpleDHT.h"
+
+// DHT Sensor
+int pinDHT11 = 2;
+SimpleDHT11 dht11(pinDHT11);
+
+
+/*Put your SSID & Password*/
+const char* ssid = "Dorskamp_ex";  // Enter SSID here
+const char* password = "46498342";  //Enter Password here
+
+ESP8266WebServer server(80);
+
+
+//Web/Server address to read/write from 
+const char *host = "84.80.49.52:85";            
+
+float Temperature;
+float Humidity;
+ 
+void setup() {
+  Serial.begin(9600);
+  Serial.setTimeout(2000);
+  
+  while (!Serial) { }
+  Serial.println("Device Started");
+  Serial.println("-------------------------------------");
+  Serial.println("Running Deep Sleep Firmware!");
+  Serial.println("-------------------------------------");
+  
+  WiFi.mode(WIFI_OFF);        //Prevents reconnection issue (taking too long to connect)
+  delay(1000);
+  WiFi.mode(WIFI_STA);        //This line hides the viewing of ESP as wifi hotspot
+         
+  Serial.println("Connecting to ");
+  Serial.println(ssid);
+
+  //connect to your local wi-fi network
+  WiFi.begin(ssid, password);
+
+  //check wi-fi is connected to wi-fi network
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  Serial.println("");
+  Serial.println("WiFi connected..!");
+  Serial.print("Got IP: ");  Serial.println(WiFi.localIP());
+
+  HTTPClient http;    //Declare object of class HTTPClient
+  String postData, sTemp , sHumid, sDevice ;
+
+  byte temperature = 0;
+  byte humidity = 0;
+  int err = 1 ;
+
+  while (err != 0 ) {
+    err = SimpleDHTErrSuccess;
+    if ((err = dht11.read(&temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
+       Serial.print(" error "); ;
+    }
+  }
+
+  
+  Serial.print(int(temperature)) ; Serial.println(" *C, ");
+  sDevice = "1" ;
+  sTemp = String(temperature);
+  sHumid = String(humidity);
+   
+  // http://84.80.49.52:85/rpiLogger.php?device=1&temp=122&humidity=22
+   
+  //Post Data
+  postData = "device=" + sDevice + "&temp=" + sTemp + "&humidity=" + sHumid;
+  
+  http.begin("http://84.80.49.52:85/rpiLogger.php");                     // request destination
+  http.addHeader("Content-Type", "application/x-www-form-urlencoded");  //Specify content-type header
+
+  int httpCode = http.POST(postData);   //Send the request
+  String payload = http.getString();    //Get the response payload
+
+  Serial.print("Code:");
+  Serial.println(httpCode);   //Print HTTP return code
+  Serial.print("Payload:");
+  Serial.println(payload);    //Print request response payload
+
+  http.end();  //Close connection
+  
+  //delay(300000);  //Post Data at every 5min
+  
+  Serial.println("Going into deep sleep for 200 seconds");
+  ESP.deepSleep(200e6); // 200e6 is 200 seconds
+
+
+
+}
+
+
+void loop() {
+  
+  
+}
