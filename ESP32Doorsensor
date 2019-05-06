@@ -30,7 +30,7 @@ char ssid[] = "Dorskamp_ex";     // your network SSID (name)
 char password[] = "46498342"; // your network key
 
 // Initialize Telegram BOT
-#define BOTtoken "885438299:AAEtlak6OCRtE_PUzm9iektkZfgQ7vJu8Ug"  // your Bot Token (Get from Botfather)
+#define BOTtoken "xx:xx"  // your Bot Token (Get from Botfather)
 
 
 /*
