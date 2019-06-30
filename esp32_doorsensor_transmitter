@@ -39,7 +39,7 @@ int val=0;
 
 // Initialize Wifi connection to the router
 char ssid[] = "Dorskamp_ex";     // your network SSID (name)
-char password[] = "46498342"; // your network key
+char password[] = ""; // your network key
 
 byte temperature = 0;
 byte humidity = 0;
@@ -47,7 +47,7 @@ byte oldtemp = 0 ;
 byte newtemp = 0 ;
 
 // Initialize Telegram BOT
-#define BOTtoken "885438299:AAEtlak6OCRtE_PUzm9iektkZfgQ7vJu8Ug"  // your Bot Token (Get from Botfather)
+#define BOTtoken ""  // your Bot Token (Get from Botfather)
 
 
 /*
