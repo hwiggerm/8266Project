@@ -1,0 +1,228 @@
+//
+// read temperature and print to screen
+// when its getting to hot send a message through telegram
+//
+// dht11 
+//   green: G17
+//   red 3v3
+//   black gnd
+//
+
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
+#include <SimpleDHT.h>
+#include "time.h"
+#include <EEPROM.h>
+
+// define the number of bytes you want to access
+#define EEPROM_SIZE 5
+
+
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 3600;
+const int   daylightOffset_sec = 3600;
+
+//Web/Server address to read/write from 
+const char *host = "84.80.49.52:85";     
+
+#define BUTTON_PIN_BITMASK 0x200000000 // 2^33 in hex
+#define CONFIG_ESP32_DEEP_SLEEP_WAKEUP_DELAY 2000
+RTC_DATA_ATTR int bootCount = 0;
+
+int pinDHT11 = 17;
+SimpleDHT11 dht11(pinDHT11);
+
+
+int reedPin = 33;
+int val=0;
+
+// Initialize Wifi connection to the router
+char ssid[] = "Dorskamp_ex";     // your network SSID (name)
+char password[] = "46498342"; // your network key
+
+byte temperature = 0;
+byte humidity = 0;
+byte oldtemp = 0 ;
+byte newtemp = 0 ;
+
+// Initialize Telegram BOT
+#define BOTtoken "885438299:AAEtlak6OCRtE_PUzm9iektkZfgQ7vJu8Ug"  // your Bot Token (Get from Botfather)
+
+
+/*
+Method to print the reason by which ESP32
+has been awaken from sleep
+*/
+String get_wakeup_reason(){
+  esp_sleep_wakeup_cause_t wakeup_reason;
+  
+  wakeup_reason = esp_sleep_get_wakeup_cause();
+
+  switch(wakeup_reason)
+  {
+    case ESP_SLEEP_WAKEUP_EXT0 : return "DOOR" ; break;
+    case ESP_SLEEP_WAKEUP_EXT1 : return "RTC_CNTL"; break;
+    case ESP_SLEEP_WAKEUP_TIMER : return "TIMER"; break;
+    case ESP_SLEEP_WAKEUP_TOUCHPAD : return "RTC_CNTL"; break;
+    case ESP_SLEEP_WAKEUP_ULP : return "ULP"; break;
+    default : return "NOSLEEP"; break;
+  }
+}
+
+void printLocalTime()
+{
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+}
+
+
+
+WiFiClientSecure client;
+UniversalTelegramBot bot(BOTtoken, client);
+
+int Bot_mtbs = 1000; //mean time between scan messages
+long Bot_lasttime;   //last time messages' scan has been done
+
+
+
+void setup() {
+   // initialize EEPROM with predefined size
+  EEPROM.begin(EEPROM_SIZE);
+  
+  Serial.begin(115200);
+  pinMode(reedPin, INPUT);  
+  delay(1000); //Take some time to open up the Serial Monitor
+
+  //Increment boot number and print it every reboot
+  ++bootCount;
+  Serial.println("Boot number: " + String(bootCount));
+
+  // Attempt to connect to Wifi network:
+  Serial.print("Connecting Wifi: ");
+  Serial.println(ssid);
+
+  // Set WiFi to station mode and disconnect from an AP if it was Previously
+  // connected
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(500);
+    }
+  Serial.println("Connected to Wifi: ");  
+
+
+  
+  //init and get the time
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  printLocalTime();
+  }
+
+void loop() {
+  String wur;
+  
+  //weakeup get the the reason
+  wur = get_wakeup_reason();
+  String bericht ;
+
+  if (wur == "TIMER") {
+    Serial.println("---------------------");
+    Serial.println("----wakeup timer-----");
+    Serial.println("---------------------"); 
+
+    //do actions that are needed in a normal wakeup
+    // read temp and humidity      
+      EEPROM.get(0,oldtemp);
+      Serial.print("Data loaded : ");
+      Serial.println(oldtemp);
+      
+      temperature = 0;
+      humidity = 0;
+      int err = SimpleDHTErrSuccess;
+      if ((err = dht11.read(&temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
+        Serial.print("Read DHT11 failed, err="); Serial.println(err);delay(1000);
+      return;
+      }      
+
+      //create a message with a combined temp and humidity
+      String bericht ;
+      bericht = "Temperature is " + String(temperature) + "*C and Humidity " + String(humidity) + " H" ;  
+      Serial.println(bericht);
+
+      newtemp = temperature;
+      Serial.print("New Temp :");
+      Serial.println(newtemp);
+      
+      EEPROM.write(0, newtemp);
+      EEPROM.commit();
+      
+      Serial.println(" Data saved");
+ 
+      //for testing send a message to telegram when the temp gets above 22 degrees
+      if (newtemp >= oldtemp * 1.05) {
+
+         // getting warm - create 'hot' message
+         bericht = " Its warming up .. " + bericht ;
+
+         // send message to telegram
+         bot.sendMessage("632109369", bericht);
+         }
+
+       if (newtemp * 1.05 < oldtemp ) {
+
+         // getting warm - create 'hot' message
+         bericht = " Its cooling down .. " + bericht ;
+
+         // send message to telegram
+         bot.sendMessage("632109369", bericht);
+         }
+     
+
+     
+        //close wake by timer
+      }
+
+      if (wur == "DOOR") {
+      Serial.println("---------------------");
+      Serial.println("----wakeup door -----");
+      Serial.println("---------------------");
+      
+
+   
+       // send message to telegram
+       bericht = "Door opened" ;
+       bot.sendMessage("632109369", bericht);
+       Serial.println("Door Open");
+
+       val = digitalRead(reedPin);
+       while (digitalRead(reedPin) == 1 ) {
+         //door is open
+         //wait intill closed to send a message when closed
+       }
+     
+       bericht = "Door closed" ;
+       bot.sendMessage("632109369", bericht);
+       Serial.println("Door closed");
+
+      }
+
+  
+      esp_sleep_enable_ext0_wakeup(GPIO_NUM_33,1); //1 = High, 0 = Low
+      //esp_sleep_enable_timer_wakeup(60000000); //1 minute
+      //esp_sleep_enable_timer_wakeup(600.000.000); //10 minutes
+      esp_sleep_enable_timer_wakeup(3600000000);  //60 minutes
+      
+      
+
+      //Go to sleep now
+      Serial.println("Going to sleep now");
+      esp_deep_sleep_start();
+  
+      
+  }
