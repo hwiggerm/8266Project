@@ -2,8 +2,8 @@
 #include <time.h>
 
 // network connection
-const char *ssid     = "Dorskamp";
-const char *password = "46498342";
+const char *ssid     = "";
+const char *password = "";
 
 // set date and time for switching
 const int onhour  = 10;
