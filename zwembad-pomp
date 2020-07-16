@@ -1,0 +1,110 @@
+#include <ESP8266WiFi.h>
+#include <time.h>
+
+// network connection
+const char *ssid     = "Dorskamp";
+const char *password = "46498342";
+
+// set date and time for switching
+const int onhour  = 10;
+const int offhour = 11;
+const int onmin = 01 ;
+const int offmin = 01 ;
+const int EVENDATES = 0;
+
+// Pin settings:
+const int ledPin = 5 ;              // GPIO5 or D1
+const int relaisPin = 14 ;          // GPIO16
+
+int switchStatus;               // status switch
+int switchPIN = 4;              // GPIO4 or D2
+int timeAlert ;
+int pompOn = 0;
+
+
+int timezone = 10 ; //CET
+int dst = 1;        //zomertijd
+
+int nhour;
+int nminute;
+int nday;
+
+struct tm * timeinfo;
+
+void setup() {
+  Serial.begin(115200);
+  Serial.setDebugOutput(true);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  Serial.println("\nConnecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(1000);
+
+  // set the digital pin as output:
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, LOW);
+
+  pinMode(relaisPin, OUTPUT);
+  digitalWrite(relaisPin, LOW);
+
+  }
+
+  configTime(2 * 3600, 0, "pool.ntp.org", "time.nist.gov");
+  Serial.println("\nWaiting for time");
+  while (!time(nullptr)) {
+    Serial.print(".");
+    delay(1000);
+  }
+  Serial.println("");
+}
+
+void loop() {
+  switchStatus = digitalRead(switchPIN);   // read status of switch
+  digitalWrite(ledPin, switchStatus); 
+  digitalWrite(relaisPin, switchStatus); 
+
+  
+  //Serial.println(switchStatus);
+  
+  time_t now = time(nullptr);
+  //Serial.println(ctime(&now));
+
+  timeinfo = localtime(&now);  
+  
+  nhour = timeinfo->tm_hour;
+  nminute = timeinfo->tm_min;
+  nday = timeinfo->tm_mday;
+
+  {
+    /* is this an even day ? if so run opump */
+    if ( ((nday % 2) == EVENDATES) || switchStatus == 1  )
+
+     {
+       if(nhour == onhour && nminute == onmin ){
+       // set the LED with the ledState of the variable:
+         timeAlert = 1; 
+     } // timeron
+
+      if(nhour == offhour && nminute == offmin ){
+      // set the LED with the ledState of the variable:
+         timeAlert = 0; 
+      } //timeroff
+     } // evendayd
+
+     if( (timeAlert == 1) || switchStatus == 1 ){
+      digitalWrite(ledPin, HIGH);
+      digitalWrite(relaisPin, HIGH);
+
+      
+     } else {
+      digitalWrite(ledPin, LOW);
+      digitalWrite(relaisPin, LOW);
+
+      
+     }
+        
+  }  
+  delay(1000);
+} // loop
